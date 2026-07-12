@@ -1,0 +1,8 @@
+venv/
+.streamlit/secrets.toml
+__pycache__/
+*.log
+complted pdf/
+processed_data/
+
+raw_data/
