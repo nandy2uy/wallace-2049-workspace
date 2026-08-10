@@ -121,7 +121,11 @@ with left_col:
             formatted_history = [(role, text) for role, text in st.session_state.chat_history[-4:]]
             
             try:
-                response_text = agent.get_agent_response(user_input, chat_history=formatted_history)
+                response_text = agent.get_agent_response(
+                    user_input,
+                    chat_history=formatted_history,
+                    active_book_path=target_path,
+                )
                 st.session_state.chat_history.append(("user", user_input))
                 st.session_state.chat_history.append(("model", response_text))
                 st.rerun()

@@ -26,15 +26,20 @@ def run_generation(client, contents, system_instruction, available_tools, models
             raise e
     raise RuntimeError("All configured Gemini API models are currently experiencing high demand. Please try again in a moment.")
 
-def get_agent_response(user_message: str, chat_history=None) -> str:
+def get_agent_response(user_message: str, chat_history=None, active_book_path=None) -> str:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         return "System Error: GEMINI_API_KEY environment variable missing."
 
     client = genai.Client(api_key=api_key)
-    
-    # Priority cascade of models to handle heavy backend server spikes
-    MODEL_CASCADE = ['gemini-3.1-flash-lite']
+
+    # Tell wiki_tools which book the UI has selected so read_wiki_context /
+    # append_to_wiki operate on that file instead of always the first book.
+    wiki_tools.set_active_book(active_book_path)
+
+    # Priority cascade of models to handle heavy backend server spikes.
+    # Each entry is tried in order; a 503 on one falls through to the next.
+    MODEL_CASCADE = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-2.5-flash-lite']
     
     available_tools = [
         wiki_tools.read_wiki_context,
