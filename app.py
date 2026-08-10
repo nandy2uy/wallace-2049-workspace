@@ -1,8 +1,11 @@
 import streamlit as st
 import time
 from pathlib import Path
+from dotenv import load_dotenv
 import agent
 import wiki_tools
+
+load_dotenv()
 
 # Page Configuration for a sleek, widescreen OS feel
 st.set_page_config(layout="wide", page_title="Wallace OS", page_icon="⚡", initial_sidebar_state="expanded")
@@ -23,7 +26,7 @@ st.markdown("""
         font-family: 'Inter', sans-serif !important;
         color: #F8F9FA !important;
     }
-    
+
     /* 2. Apple Liquid Glass for Sidebar */
     [data-testid="stSidebar"] {
         background: rgba(18, 24, 28, 0.4) !important;
@@ -33,7 +36,7 @@ st.markdown("""
     }
 
     /* 3. Glass Containers (Chat & Markdown Viewer) */
-    div[data-testid="stVerticalBlock"] > div[style*="border"], 
+    div[data-testid="stVerticalBlock"] > div[style*="border"],
     .stChatFloatingInputContainer,
     .streamlit-expanderHeader {
         background: rgba(20, 28, 35, 0.45) !important;
@@ -65,7 +68,7 @@ st.markdown("""
     p, .st-emotion-cache-1104q6c {
         color: #D1D5DB !important; /* Soft gray for readability */
     }
-    
+
     /* Hide Streamlit Branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -81,18 +84,18 @@ with st.sidebar:
     st.title("⚙️ Workspace")
     st.caption("Agentic Knowledge Interface")
     st.divider()
-    
+
     try:
         all_books = wiki_tools.get_all_books()
         book_map = {b.name: b for b in all_books}
-        
+
         st.metric(label="Active Knowledge Bases", value=len(all_books))
         st.divider()
         st.subheader("Target Context")
-        
+
         selected_book = st.selectbox("Select Active Document:", list(book_map.keys()), label_visibility="collapsed")
         target_path = book_map[selected_book]
-        
+
     except Exception:
         st.warning("No processed data found. Run the ingestion pipeline.")
         target_path = None
@@ -105,7 +108,7 @@ left_col, right_col = st.columns([1.2, 1], gap="large")
 # --- LEFT COLUMN: The Agent Interface ---
 with left_col:
     st.subheader("Terminal")
-    
+
     chat_container = st.container(height=550, border=True)
     with chat_container:
         for role, text in st.session_state.chat_history:
@@ -116,10 +119,10 @@ with left_col:
 
     if user_input := st.chat_input("Synthesize concepts, update files, or query the wiki..."):
         chat_container.chat_message("user").write(user_input)
-        
+
         with st.spinner("Processing request..."):
             formatted_history = [(role, text) for role, text in st.session_state.chat_history[-4:]]
-            
+
             try:
                 response_text = agent.get_agent_response(
                     user_input,
@@ -139,6 +142,6 @@ with right_col:
         st.info(f"📍 Watching: `{target_path.name}`")
         with open(target_path, "r", encoding="utf-8") as f:
             current_markdown = f.read()
-            
+
         with st.expander("Expand to view full raw markdown", expanded=True):
             st.markdown(current_markdown[:4000] + "\n\n... [Truncated for UI optimization] ...")
