@@ -2,30 +2,33 @@ import os
 import sys
 import time
 from pathlib import Path
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from pypdf import PdfReader, PdfWriter
 
+load_dotenv()
+
 RAW_DATA = Path(__file__).resolve().parent / "raw_data"
 OUTPUT_DIR = Path(__file__).resolve().parent / "processed_data"
-CHUNK_SIZE = 40  
+CHUNK_SIZE = 40
 
 def split_pdf(file_path):
     reader = PdfReader(file_path)
     total_pages = len(reader.pages)
     chunk_paths = []
-    
+
     for i in range(0, total_pages, CHUNK_SIZE):
         writer = PdfWriter()
         end_page = min(i + CHUNK_SIZE, total_pages)
         for page_num in range(i, end_page):
             writer.add_page(reader.pages[page_num])
-            
+
         chunk_path = file_path.parent / f"temp_chunk_{i}_to_{end_page}.pdf"
         with open(chunk_path, "wb") as f:
             writer.write(f)
         chunk_paths.append(chunk_path)
-        
+
     return chunk_paths, total_pages
 
 def main():
@@ -44,19 +47,17 @@ def main():
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # ---------------------------------------------------------
-    # 🛑 RESUME SETTING: 
-    # Since you crashed on Chunk 9, I set this to 9 for you.
-    # When this book finishes, it automatically resets to 1 for the next books.
+    # RESUME_FROM_CHUNK lets you restart a book partway through if a previous
+    # run crashed mid-way. Set it to the chunk number to resume from (1 = start
+    # over). It auto-resets to 1 once a book finishes, for the next book.
     RESUME_FROM_CHUNK = 1
-    # ---------------------------------------------------------
 
     for pdf_path in pdf_files:
         print(f"\n=== Processing: {pdf_path.name} ===")
         out_folder = OUTPUT_DIR / pdf_path.stem
         out_folder.mkdir(parents=True, exist_ok=True)
         out_file = out_folder / f"{pdf_path.stem}.md"
-        
+
         # Only wipe the file clean if we are starting a completely fresh book
         if RESUME_FROM_CHUNK == 1 and out_file.exists():
             out_file.unlink()
@@ -66,7 +67,7 @@ def main():
 
         for idx, chunk_path in enumerate(chunk_paths):
             current_chunk = idx + 1
-            
+
             if current_chunk < RESUME_FROM_CHUNK:
                 print(f"⏩ Skipping Chunk {current_chunk} (Already saved)...")
                 if chunk_path.exists():
@@ -75,7 +76,7 @@ def main():
 
             print(f"\n[Chunk {current_chunk}/{len(chunk_paths)}] Uploading...")
             uploaded_file = client.files.upload(file=str(chunk_path))
-            
+
             print("Waiting for vision indexing", end="", flush=True)
             while uploaded_file.state.name == "PROCESSING":
                 print(".", end="", flush=True)
@@ -95,10 +96,10 @@ def main():
                 "and $$ for block equations). Output only the final Markdown text."
             )
 
-            # --- BULLETPROOF RETRY LOOP ---
-            max_retries = 6  
+            # Retry with backoff, distinguishing rate limits from transient errors
+            max_retries = 6
             response = None
-            
+
             for attempt in range(max_retries):
                 try:
                     response = client.models.generate_content(
@@ -113,7 +114,7 @@ def main():
                             ]
                         )
                     )
-                    break 
+                    break
                 except Exception as e:
                     error_msg = str(e)
                     if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
@@ -127,8 +128,8 @@ def main():
                         time.sleep(5)
                     else:
                         print(f"\n[!] Critical API failure on Chunk {current_chunk}. Skipping. Error: {error_msg}")
-            
-            # --- FILE SAVING ---
+
+            # Save the chunk's output
             if response and response.text:
                 with open(out_file, "a", encoding="utf-8") as f:
                     f.write(response.text + "\n\n---\n\n")
@@ -141,13 +142,13 @@ def main():
 
             client.files.delete(name=uploaded_file.name)
             chunk_path.unlink()
-            
-            # --- API PACER ---
-            print("Pacing request for 5 seconds to respect API speed limits...")
+
+            # Pace requests to respect API rate limits
+            print("Pausing 5 seconds between requests...")
             time.sleep(5)
 
         print(f"\nSUCCESS! Master file compiled and written to: {out_file}")
-        
+
         # Reset the resume tracker so the next book starts at Chunk 1 naturally
         RESUME_FROM_CHUNK = 1
 
