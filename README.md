@@ -29,20 +29,13 @@ source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Ingestion additionally needs `pypdf` (for `ingest.py`) and `pymupdf` (for `ingest_fast.py`):
-
-```bash
-pip install pypdf pymupdf
-```
-
 **2. Set your Gemini API key**
 
-Copy `.env.example` to `.env` and fill in your key, then export it before running anything:
+Copy `.env.example` to `.env` and fill in your key — it's loaded automatically (via `python-dotenv`) and is gitignored, so it never gets committed:
 
 ```bash
 cp .env.example .env
 # edit .env and add your key
-export GEMINI_API_KEY=your_key_here     # Windows: set GEMINI_API_KEY=your_key_here
 ```
 
 Get a key from [Google AI Studio](https://aistudio.google.com/apikey).
