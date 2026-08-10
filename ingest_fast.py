@@ -16,35 +16,35 @@ def main():
     for pdf_path in pdf_files:
         # Strip trailing spaces from the filename (Windows safety check)
         safe_stem = pdf_path.stem.strip()
-        
-        print(f"\n=== Shredding: {pdf_path.name} ===")
+
+        print(f"\n=== Processing: {pdf_path.name} ===")
         start_time = time.time()
-        
+
         out_folder = OUTPUT_DIR / safe_stem
         out_folder.mkdir(parents=True, exist_ok=True)
         out_file = out_folder / f"{safe_stem}.md"
-        
+
         # Skip if already processed
         if out_file.exists():
             print(f"⏩ '{safe_stem}.md' already exists. Skipping...")
             continue
-            
+
         # Open the PDF locally
         doc = fitz.open(pdf_path)
         markdown_text = f"# {safe_stem}\n\n"
-        
-        # Rip through every page instantly
+
+        # Extract text page by page
         for page_num in range(len(doc)):
             page = doc[page_num]
             text = page.get_text("text")
             markdown_text += f"\n\n## Page {page_num + 1}\n\n{text}"
-            
+
         # Save to disk
         with open(out_file, "w", encoding="utf-8") as f:
             f.write(markdown_text)
-            
+
         elapsed = time.time() - start_time
-        print(f"⚡ Done in {elapsed:.2f} seconds. Saved to {out_file}")
+        print(f"Done in {elapsed:.2f}s. Saved to {out_file}")
 
 if __name__ == "__main__":
     main()
